@@ -49,6 +49,36 @@ export const transactions = [
     color: "#F59E0B",
     bg: "#FFF4CC",
   },
+  {
+    id: "6",
+    title: "Cine",
+    category: "Ocio",
+    time: "18 mayo, 8:00 pm",
+    amount: -35,
+    icon: "film-outline",
+    color: "#EF4444",
+    bg: "#FFEAF2",
+  },
+  {
+    id: "7",
+    title: "Internet",
+    category: "Servicios",
+    time: "18 mayo, 11:00 am",
+    amount: -95,
+    icon: "wifi-outline",
+    color: "#3B82F6",
+    bg: "#E8F7EF",
+  },
+  {
+    id: "8",
+    title: "Farmacia",
+    category: "Salud",
+    time: "17 mayo, 5:20 pm",
+    amount: -42,
+    icon: "medkit-outline",
+    color: "#10B981",
+    bg: "#DFF7EC",
+  },
 ];
 
 export const categories = [
@@ -79,5 +109,58 @@ export const categories = [
     icon: "flash-outline",
     color: "#3B82F6",
     bg: "#E8F7EF",
+  },
+  {
+    id: "5",
+    name: "Otros",
+    icon: "ellipsis-horizontal-outline",
+    color: "#6B7280",
+    bg: "#F1F3F5",
+  },
+];
+
+export const allCategories = [
+  ...categories.filter((category) => category.name !== "Otros"),
+  {
+    id: "6",
+    name: "Salud",
+    icon: "medkit-outline",
+    color: "#10B981",
+    bg: "#DFF7EC",
+  },
+  {
+    id: "7",
+    name: "Educación",
+    icon: "school-outline",
+    color: "#7C3AED",
+    bg: "#F0E7FF",
+  },
+  {
+    id: "8",
+    name: "Vivienda",
+    icon: "home-outline",
+    color: "#8B5CF6",
+    bg: "#EFE7FF",
+  },
+  {
+    id: "9",
+    name: "Compras",
+    icon: "bag-outline",
+    color: "#EC4899",
+    bg: "#FFE4F1",
+  },
+  {
+    id: "10",
+    name: "Ahorro",
+    icon: "wallet-outline",
+    color: "#00924B",
+    bg: "#E8F7EF",
+  },
+  {
+    id: "11",
+    name: "Trabajo",
+    icon: "briefcase-outline",
+    color: "#475569",
+    bg: "#E2E8F0",
   },
 ];
