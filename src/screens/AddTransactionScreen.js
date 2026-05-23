@@ -15,6 +15,7 @@ import * as Sentry from "@sentry/react-native";
 import colors from "../theme/colors";
 import ButtonPrimary from "../components/ButtonPrimary";
 import { allCategories } from "../data/mockData";
+import { useAppTheme } from "../theme/ThemeContext";
 
 const quickCategories = allCategories.filter((category) =>
   ["Comida", "Transporte", "Servicios", "Ocio"].includes(category.name)
@@ -31,6 +32,8 @@ const dates = [
 ];
 
 export default function AddTransactionScreen({ navigation }) {
+  const { theme, isDarkMode } = useAppTheme();
+
   const [type, setType] = useState("Gasto");
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState(null);
@@ -79,33 +82,38 @@ export default function AddTransactionScreen({ navigation }) {
       [
         {
           text: "OK",
-          onPress: () => navigation.navigate("Inicio"),
+          onPress: () => navigation.goBack(),
         },
       ]
     );
   };
 
+  const inputBackground = isDarkMode ? "#222A31" : "#FFFFFF";
+  const softBackground = isDarkMode ? "#151A20" : "#F1F5F3";
+
   return (
     <>
       <ScrollView
-        style={styles.container}
+        style={[styles.container, { backgroundColor: theme.background }]}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() => navigation.navigate("Inicio")}
+            onPress={() => navigation.goBack()}
           >
-            <Ionicons name="chevron-back" size={24} color={colors.primary} />
+            <Ionicons name="chevron-back" size={24} color={theme.primary} />
           </TouchableOpacity>
 
-          <Text style={styles.headerTitle}>Agregar movimiento</Text>
+          <Text style={[styles.headerTitle, { color: theme.primary }]}>
+            Agregar movimiento
+          </Text>
 
           <View style={styles.headerSpace} />
         </View>
 
-        <View style={styles.typeSelector}>
+        <View style={[styles.typeSelector, { backgroundColor: softBackground }]}>
           <TouchableOpacity
             style={[
               styles.typeButton,
@@ -116,14 +124,14 @@ export default function AddTransactionScreen({ navigation }) {
             <Ionicons
               name="arrow-up-outline"
               size={17}
-              color={type === "Gasto" ? "#FFFFFF" : "#C1121F"}
+              color={type === "Gasto" ? "#FFFFFF" : colors.expense}
               style={styles.typeIcon}
             />
 
             <Text
               style={[
                 styles.typeText,
-                type === "Gasto" && styles.typeTextActive,
+                { color: type === "Gasto" ? "#FFFFFF" : colors.expense },
               ]}
             >
               Gasto
@@ -133,21 +141,28 @@ export default function AddTransactionScreen({ navigation }) {
           <TouchableOpacity
             style={[
               styles.typeButton,
-              type === "Ingreso" && styles.incomeButtonActive,
+              type === "Ingreso" && {
+                backgroundColor: theme.primary,
+                shadowColor: theme.primary,
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.22,
+                shadowRadius: 8,
+                elevation: 4,
+              },
             ]}
             onPress={() => setType("Ingreso")}
           >
             <Ionicons
               name="arrow-down-outline"
               size={17}
-              color={type === "Ingreso" ? "#FFFFFF" : colors.primary}
+              color={type === "Ingreso" ? "#FFFFFF" : theme.primary}
               style={styles.typeIcon}
             />
 
             <Text
               style={[
                 styles.typeText,
-                type === "Ingreso" && styles.typeTextActive,
+                { color: type === "Ingreso" ? "#FFFFFF" : theme.primary },
               ]}
             >
               Ingreso
@@ -156,41 +171,65 @@ export default function AddTransactionScreen({ navigation }) {
         </View>
 
         <View style={styles.amountBox}>
-          <Text style={[styles.currency, isIncome && styles.incomeAmountText]}>
+          <Text
+            style={[
+              styles.currency,
+              {
+                color: isIncome ? theme.primary : theme.textMuted,
+              },
+            ]}
+          >
             S/
           </Text>
 
           <TextInput
-            style={[styles.amountInput, isIncome && styles.incomeAmountText]}
+            style={[
+              styles.amountInput,
+              {
+                color: isIncome ? theme.primary : theme.text,
+              },
+            ]}
             placeholder="0.00"
-            placeholderTextColor="#D1D5DB"
+            placeholderTextColor={theme.textMuted}
             keyboardType="numeric"
             value={amount}
             onChangeText={setAmount}
           />
         </View>
+
         {!!errors.amount && <Text style={styles.error}>{errors.amount}</Text>}
 
         <TouchableOpacity
-          style={styles.selectorBox}
+          style={[
+            styles.selectorBox,
+            {
+              backgroundColor: inputBackground,
+              borderColor: theme.border,
+            },
+          ]}
           onPress={() => setShowCategoryModal(true)}
         >
           <Text
             style={[
               styles.selectorText,
-              category && styles.selectorTextSelected,
+              {
+                color: category ? theme.text : theme.textMuted,
+              },
             ]}
           >
             {category ? category.name : "Selecciona una categoría"}
           </Text>
 
-          <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          <Ionicons name="chevron-forward" size={20} color={theme.textMuted} />
         </TouchableOpacity>
+
         {!!errors.category && (
           <Text style={styles.error}>{errors.category}</Text>
         )}
 
-        <Text style={styles.sectionTitle}>Categorías rápidas</Text>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>
+          Categorías rápidas
+        </Text>
 
         <View style={styles.quickCategories}>
           {quickCategories.map((item) => {
@@ -205,7 +244,10 @@ export default function AddTransactionScreen({ navigation }) {
                 <View
                   style={[
                     styles.quickIcon,
-                    { backgroundColor: item.bg },
+                    {
+                      backgroundColor: isDarkMode ? "#24313A" : item.bg,
+                      borderColor: selected ? theme.primary : theme.border,
+                    },
                     selected && styles.quickIconSelected,
                   ]}
                 >
@@ -215,7 +257,9 @@ export default function AddTransactionScreen({ navigation }) {
                 <Text
                   style={[
                     styles.quickText,
-                    selected && styles.quickTextSelected,
+                    {
+                      color: selected ? theme.primary : theme.text,
+                    },
                   ]}
                 >
                   {item.name}
@@ -225,7 +269,7 @@ export default function AddTransactionScreen({ navigation }) {
           })}
         </View>
 
-        <View style={styles.detailsCard}>
+        <View style={[styles.detailsCard, { backgroundColor: theme.card }]}>
           <TouchableOpacity
             style={styles.detailRow}
             onPress={() => setShowDateModal(true)}
@@ -233,53 +277,56 @@ export default function AddTransactionScreen({ navigation }) {
             <Ionicons
               name="calendar-outline"
               size={22}
-              color={colors.textMuted}
+              color={theme.textMuted}
             />
 
-            <Text style={styles.detailText}>{selectedDate}</Text>
+            <Text style={[styles.detailText, { color: theme.text }]}>
+              {selectedDate}
+            </Text>
 
-            <Ionicons name="create-outline" size={20} color={colors.primary} />
+            <Ionicons name="create-outline" size={20} color={theme.primary} />
           </TouchableOpacity>
 
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
           <View style={styles.detailRow}>
             <Ionicons
               name="reorder-three-outline"
               size={24}
-              color={colors.textMuted}
+              color={theme.textMuted}
             />
 
             <TextInput
-              style={styles.descriptionInput}
+              style={[styles.descriptionInput, { color: theme.text }]}
               placeholder="Ej. Almuerzo con amigos"
-              placeholderTextColor="#B8C2BD"
+              placeholderTextColor={theme.textMuted}
               value={description}
               onChangeText={setDescription}
             />
           </View>
 
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
           <TouchableOpacity
             style={styles.detailRow}
             onPress={() => setShowPaymentModal(true)}
           >
-            <Ionicons
-              name="wallet-outline"
-              size={21}
-              color={colors.textMuted}
-            />
+            <Ionicons name="wallet-outline" size={21} color={theme.textMuted} />
 
             <View style={styles.paymentInfo}>
-              <Text style={styles.paymentLabel}>MÉTODO DE PAGO</Text>
-              <Text style={styles.paymentValue}>{paymentMethod}</Text>
+              <Text style={[styles.paymentLabel, { color: theme.textMuted }]}>
+                MÉTODO DE PAGO
+              </Text>
+
+              <Text style={[styles.paymentValue, { color: theme.text }]}>
+                {paymentMethod}
+              </Text>
             </View>
 
             <Ionicons
               name="chevron-forward"
               size={20}
-              color={colors.textMuted}
+              color={theme.textMuted}
             />
           </TouchableOpacity>
         </View>
@@ -289,7 +336,9 @@ export default function AddTransactionScreen({ navigation }) {
           onPress={handleSave}
           style={[
             styles.saveButton,
-            isIncome && styles.saveButtonIncome,
+            {
+              backgroundColor: isIncome ? theme.primary : colors.primaryDark,
+            },
           ]}
         />
 
@@ -303,12 +352,14 @@ export default function AddTransactionScreen({ navigation }) {
         onRequestClose={() => setShowCategoryModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Selecciona una categoría</Text>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>
+                Selecciona una categoría
+              </Text>
 
               <TouchableOpacity onPress={() => setShowCategoryModal(false)}>
-                <Ionicons name="close" size={24} color={colors.text} />
+                <Ionicons name="close" size={24} color={theme.text} />
               </TouchableOpacity>
             </View>
 
@@ -325,13 +376,19 @@ export default function AddTransactionScreen({ navigation }) {
                   <View
                     style={[
                       styles.modalIconCircle,
-                      { backgroundColor: item.bg },
+                      {
+                        backgroundColor: isDarkMode ? "#24313A" : item.bg,
+                      },
                     ]}
                   >
                     <Ionicons name={item.icon} size={22} color={item.color} />
                   </View>
 
-                  <Text style={styles.modalCategoryText}>{item.name}</Text>
+                  <Text
+                    style={[styles.modalCategoryText, { color: theme.text }]}
+                  >
+                    {item.name}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -346,12 +403,14 @@ export default function AddTransactionScreen({ navigation }) {
         onRequestClose={() => setShowPaymentModal(false)}
       >
         <View style={styles.modalOverlayCenter}>
-          <View style={styles.paymentModal}>
+          <View style={[styles.paymentModal, { backgroundColor: theme.card }]}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Método de pago</Text>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>
+                Método de pago
+              </Text>
 
               <TouchableOpacity onPress={() => setShowPaymentModal(false)}>
-                <Ionicons name="close" size={24} color={colors.text} />
+                <Ionicons name="close" size={24} color={theme.text} />
               </TouchableOpacity>
             </View>
 
@@ -363,7 +422,13 @@ export default function AddTransactionScreen({ navigation }) {
                   key={method}
                   style={[
                     styles.paymentOption,
-                    selected && styles.paymentOptionActive,
+                    {
+                      backgroundColor: selected
+                        ? theme.primaryLight
+                        : isDarkMode
+                        ? "#222A31"
+                        : "#F6F8F7",
+                    },
                   ]}
                   onPress={() => {
                     setPaymentMethod(method);
@@ -373,7 +438,9 @@ export default function AddTransactionScreen({ navigation }) {
                   <Text
                     style={[
                       styles.paymentOptionText,
-                      selected && styles.paymentOptionTextActive,
+                      {
+                        color: selected ? theme.primary : theme.text,
+                      },
                     ]}
                   >
                     {method}
@@ -383,7 +450,7 @@ export default function AddTransactionScreen({ navigation }) {
                     <Ionicons
                       name="checkmark-circle"
                       size={20}
-                      color={colors.primary}
+                      color={theme.primary}
                     />
                   )}
                 </TouchableOpacity>
@@ -400,12 +467,14 @@ export default function AddTransactionScreen({ navigation }) {
         onRequestClose={() => setShowDateModal(false)}
       >
         <View style={styles.modalOverlayCenter}>
-          <View style={styles.paymentModal}>
+          <View style={[styles.paymentModal, { backgroundColor: theme.card }]}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Selecciona fecha</Text>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>
+                Selecciona fecha
+              </Text>
 
               <TouchableOpacity onPress={() => setShowDateModal(false)}>
-                <Ionicons name="close" size={24} color={colors.text} />
+                <Ionicons name="close" size={24} color={theme.text} />
               </TouchableOpacity>
             </View>
 
@@ -417,7 +486,13 @@ export default function AddTransactionScreen({ navigation }) {
                   key={date}
                   style={[
                     styles.paymentOption,
-                    selected && styles.paymentOptionActive,
+                    {
+                      backgroundColor: selected
+                        ? theme.primaryLight
+                        : isDarkMode
+                        ? "#222A31"
+                        : "#F6F8F7",
+                    },
                   ]}
                   onPress={() => {
                     setSelectedDate(date);
@@ -427,7 +502,9 @@ export default function AddTransactionScreen({ navigation }) {
                   <Text
                     style={[
                       styles.paymentOptionText,
-                      selected && styles.paymentOptionTextActive,
+                      {
+                        color: selected ? theme.primary : theme.text,
+                      },
                     ]}
                   >
                     {date}
@@ -437,7 +514,7 @@ export default function AddTransactionScreen({ navigation }) {
                     <Ionicons
                       name="checkmark-circle"
                       size={20}
-                      color={colors.primary}
+                      color={theme.primary}
                     />
                   )}
                 </TouchableOpacity>
@@ -453,7 +530,6 @@ export default function AddTransactionScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   content: {
     paddingHorizontal: 24,
@@ -472,7 +548,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: 16,
     fontWeight: "900",
-    color: colors.primary,
   },
   headerSpace: {
     width: 36,
@@ -480,7 +555,6 @@ const styles = StyleSheet.create({
   typeSelector: {
     height: 52,
     flexDirection: "row",
-    backgroundColor: "#F1F5F3",
     borderRadius: 14,
     marginBottom: 34,
     padding: 4,
@@ -500,24 +574,12 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-  incomeButtonActive: {
-    backgroundColor: colors.primary,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.22,
-    shadowRadius: 8,
-    elevation: 4,
-  },
   typeIcon: {
     marginRight: 6,
   },
   typeText: {
     fontSize: 14,
     fontWeight: "900",
-    color: colors.primary,
-  },
-  typeTextActive: {
-    color: "#FFFFFF",
   },
   amountBox: {
     flexDirection: "row",
@@ -528,22 +590,16 @@ const styles = StyleSheet.create({
   currency: {
     fontSize: 26,
     fontWeight: "900",
-    color: "#8A8A8A",
     marginRight: 30,
   },
   amountInput: {
     minWidth: 130,
     fontSize: 32,
     fontWeight: "900",
-    color: colors.text,
-  },
-  incomeAmountText: {
-    color: colors.primary,
   },
   selectorBox: {
     height: 48,
     borderWidth: 1,
-    borderColor: "#CFCFCF",
     borderRadius: 8,
     paddingHorizontal: 14,
     flexDirection: "row",
@@ -553,10 +609,6 @@ const styles = StyleSheet.create({
   selectorText: {
     flex: 1,
     fontSize: 14,
-    color: colors.textMuted,
-  },
-  selectorTextSelected: {
-    color: colors.text,
     fontWeight: "800",
   },
   error: {
@@ -568,7 +620,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 14,
     fontWeight: "900",
-    color: colors.text,
     marginBottom: 16,
   },
   quickCategories: {
@@ -587,25 +638,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#DDF5E7",
   },
   quickIconSelected: {
     borderWidth: 2,
-    borderColor: colors.primary,
   },
   quickText: {
     marginTop: 8,
     fontSize: 12,
-    fontWeight: "700",
-    color: colors.text,
+    fontWeight: "800",
     textAlign: "center",
   },
-  quickTextSelected: {
-    color: colors.primary,
-    fontWeight: "900",
-  },
   detailsCard: {
-    backgroundColor: "#FFFFFF",
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 4,
@@ -624,14 +667,12 @@ const styles = StyleSheet.create({
   detailText: {
     flex: 1,
     marginLeft: 12,
-    color: colors.text,
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "800",
   },
   descriptionInput: {
     flex: 1,
     marginLeft: 12,
-    color: colors.text,
     fontSize: 14,
   },
   paymentInfo: {
@@ -640,32 +681,25 @@ const styles = StyleSheet.create({
   },
   paymentLabel: {
     fontSize: 11,
-    color: colors.textMuted,
     fontWeight: "900",
     letterSpacing: 1,
   },
   paymentValue: {
     marginTop: 2,
     fontSize: 14,
-    fontWeight: "700",
-    color: colors.text,
+    fontWeight: "800",
   },
   divider: {
     height: 1,
-    backgroundColor: "#F1F3F5",
   },
   saveButton: {
     height: 52,
     borderRadius: 9,
-    backgroundColor: colors.primaryDark,
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.18,
     shadowRadius: 8,
     elevation: 4,
-  },
-  saveButtonIncome: {
-    backgroundColor: colors.primary,
   },
   modalOverlay: {
     flex: 1,
@@ -679,7 +713,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
   },
   modalContent: {
-    backgroundColor: "#FFFFFF",
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingHorizontal: 20,
@@ -687,7 +720,6 @@ const styles = StyleSheet.create({
     paddingBottom: 34,
   },
   paymentModal: {
-    backgroundColor: "#FFFFFF",
     borderRadius: 24,
     paddingHorizontal: 20,
     paddingTop: 20,
@@ -702,7 +734,6 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: "900",
-    color: colors.text,
   },
   modalGrid: {
     flexDirection: "row",
@@ -725,7 +756,6 @@ const styles = StyleSheet.create({
   modalCategoryText: {
     fontSize: 12,
     fontWeight: "800",
-    color: colors.text,
     textAlign: "center",
   },
   paymentOption: {
@@ -733,20 +763,12 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingHorizontal: 14,
     marginBottom: 10,
-    backgroundColor: "#F6F8F7",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
-  paymentOptionActive: {
-    backgroundColor: colors.primaryLight,
-  },
   paymentOptionText: {
     fontSize: 14,
     fontWeight: "800",
-    color: colors.text,
-  },
-  paymentOptionTextActive: {
-    color: colors.primary,
   },
 });

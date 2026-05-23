@@ -11,9 +11,10 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 
 import colors from "../theme/colors";
-import TransactionItem from "../components/TransactionItem";
 import ButtonPrimary from "../components/ButtonPrimary";
 import { transactions, allCategories } from "../data/mockData";
+import { formatCurrency } from "../utils/formatCurrency";
+import { useAppTheme } from "../theme/ThemeContext";
 
 const groupedTransactions = [
   {
@@ -36,7 +37,50 @@ const groupedTransactions = [
   },
 ];
 
+function TransactionRow({ item, theme, isDarkMode }) {
+  const isIncome = item.amount > 0;
+
+  return (
+    <View style={[styles.transactionRow, { backgroundColor: theme.card }]}>
+      <View
+        style={[
+          styles.transactionIcon,
+          {
+            backgroundColor: isDarkMode ? "#24313A" : item.bg,
+          },
+        ]}
+      >
+        <Ionicons name={item.icon} size={20} color={item.color} />
+      </View>
+
+      <View style={styles.transactionInfo}>
+        <Text style={[styles.transactionTitle, { color: theme.text }]}>
+          {item.title}
+        </Text>
+
+        <Text style={[styles.transactionTime, { color: theme.textMuted }]}>
+          {item.time}
+        </Text>
+      </View>
+
+      <Text
+        style={[
+          styles.transactionAmount,
+          {
+            color: isIncome ? theme.primary : colors.expense,
+          },
+        ]}
+      >
+        {isIncome ? "+ " : "- "}
+        {formatCurrency(Math.abs(item.amount))}
+      </Text>
+    </View>
+  );
+}
+
 export default function HistoryScreen() {
+  const { theme, isDarkMode } = useAppTheme();
+
   const [selectedFilter, setSelectedFilter] = useState("Hoy");
   const [search, setSearch] = useState("");
 
@@ -146,50 +190,67 @@ export default function HistoryScreen() {
   return (
     <>
       <ScrollView
-        style={styles.container}
+        style={[styles.container, { backgroundColor: theme.background }]}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => setShowAdvancedModal(true)}>
-            <Ionicons name="menu" size={22} color={colors.primary} />
-          </TouchableOpacity>
+       <View style={styles.header}>
+  <TouchableOpacity
+    style={styles.headerSide}
+    onPress={() => setShowAdvancedModal(true)}
+  >
+    <Ionicons name="menu" size={23} color={theme.primary} />
+  </TouchableOpacity>
 
-          <Text style={styles.headerTitle}>Historial</Text>
+  <Text style={[styles.headerTitle, { color: theme.primary }]}>
+    Historial
+  </Text>
 
-          <TouchableOpacity>
-            <Ionicons name="search-outline" size={22} color={colors.text} />
-          </TouchableOpacity>
-        </View>
+  <View style={styles.headerSide} />
+</View>
 
-        <View style={styles.searchBox}>
-          <Ionicons name="search-outline" size={18} color={colors.textMuted} />
+        <View style={[styles.searchBox, { backgroundColor: theme.card }]}>
+          <Ionicons name="search-outline" size={18} color={theme.textMuted} />
 
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: theme.text }]}
             placeholder="Buscar movimiento..."
-            placeholderTextColor={colors.textMuted}
+            placeholderTextColor={theme.textMuted}
             value={search}
             onChangeText={setSearch}
           />
 
           <TouchableOpacity onPress={() => setShowAmountModal(true)}>
-            <Ionicons name="options-outline" size={20} color={colors.primary} />
+            <Ionicons name="options-outline" size={20} color={theme.primary} />
           </TouchableOpacity>
         </View>
 
         {hasActiveFilters && (
-          <View style={styles.activeFiltersBox}>
+          <View
+            style={[
+              styles.activeFiltersBox,
+              {
+                backgroundColor: theme.primaryLight,
+              },
+            ]}
+          >
             <TouchableOpacity
-              style={styles.clearFiltersFloating}
+              style={[
+                styles.clearFiltersFloating,
+                {
+                  backgroundColor: theme.primary,
+                },
+              ]}
               onPress={clearAllFilters}
             >
               <Ionicons name="close" size={14} color="#FFFFFF" />
             </TouchableOpacity>
 
-            <Text style={styles.activeFiltersTitle}>Filtros activos:</Text>
+            <Text style={[styles.activeFiltersTitle, { color: theme.primary }]}>
+              Filtros activos:
+            </Text>
 
-            <Text style={styles.activeFiltersText}>
+            <Text style={[styles.activeFiltersText, { color: theme.primary }]}>
               {movementType !== "Todos" ? `${movementType} · ` : ""}
               {selectedCategory !== "Todas" ? `${selectedCategory} · ` : ""}
               {sortBy !== "Recientes" ? `${sortBy} · ` : ""}
@@ -206,11 +267,25 @@ export default function HistoryScreen() {
             return (
               <TouchableOpacity
                 key={filter}
-                style={[styles.filterChip, active && styles.filterChipActive]}
+                style={[
+                  styles.filterChip,
+                  {
+                    backgroundColor: active
+                      ? theme.primary
+                      : isDarkMode
+                      ? "#222A31"
+                      : "#E5E5E5",
+                  },
+                ]}
                 onPress={() => setSelectedFilter(filter)}
               >
                 <Text
-                  style={[styles.filterText, active && styles.filterTextActive]}
+                  style={[
+                    styles.filterText,
+                    {
+                      color: active ? "#FFFFFF" : theme.text,
+                    },
+                  ]}
                 >
                   {filter}
                 </Text>
@@ -222,10 +297,17 @@ export default function HistoryScreen() {
         {visibleGroups.length > 0 ? (
           visibleGroups.map((group) => (
             <View key={group.date} style={styles.group}>
-              <Text style={styles.dateTitle}>{group.date}</Text>
+              <Text style={[styles.dateTitle, { color: theme.textMuted }]}>
+                {group.date}
+              </Text>
 
               {group.items.map((item) => (
-                <TransactionItem key={item.id} item={item} />
+                <TransactionRow
+                  key={item.id}
+                  item={item}
+                  theme={theme}
+                  isDarkMode={isDarkMode}
+                />
               ))}
             </View>
           ))
@@ -234,9 +316,12 @@ export default function HistoryScreen() {
             <Ionicons
               name="file-tray-outline"
               size={32}
-              color={colors.textMuted}
+              color={theme.textMuted}
             />
-            <Text style={styles.emptyText}>No se encontraron movimientos.</Text>
+
+            <Text style={[styles.emptyText, { color: theme.textMuted }]}>
+              No se encontraron movimientos.
+            </Text>
           </View>
         )}
 
@@ -250,117 +335,175 @@ export default function HistoryScreen() {
         onRequestClose={() => setShowAdvancedModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Filtros del historial</Text>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>
+                Filtros del historial
+              </Text>
 
               <TouchableOpacity onPress={() => setShowAdvancedModal(false)}>
-                <Ionicons name="close" size={24} color={colors.text} />
+                <Ionicons name="close" size={24} color={theme.text} />
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.modalSubtitle}>
+            <Text style={[styles.modalSubtitle, { color: theme.textMuted }]}>
               Organiza tus movimientos por tipo, categoría u orden.
             </Text>
 
-            <Text style={styles.modalSectionTitle}>Tipo de movimiento</Text>
+            <Text style={[styles.modalSectionTitle, { color: theme.text }]}>
+              Tipo de movimiento
+            </Text>
+
             <View style={styles.chipRow}>
-              {movementTypes.map((type) => (
-                <TouchableOpacity
-                  key={type}
-                  style={[
-                    styles.modalChip,
-                    movementType === type && styles.modalChipActive,
-                  ]}
-                  onPress={() => setMovementType(type)}
-                >
-                  <Text
+              {movementTypes.map((type) => {
+                const active = movementType === type;
+
+                return (
+                  <TouchableOpacity
+                    key={type}
                     style={[
-                      styles.modalChipText,
-                      movementType === type && styles.modalChipTextActive,
+                      styles.modalChip,
+                      {
+                        backgroundColor: active
+                          ? theme.primary
+                          : isDarkMode
+                          ? "#222A31"
+                          : "#F1F3F5",
+                      },
                     ]}
+                    onPress={() => setMovementType(type)}
                   >
-                    {type}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                    <Text
+                      style={[
+                        styles.modalChipText,
+                        {
+                          color: active ? "#FFFFFF" : theme.text,
+                        },
+                      ]}
+                    >
+                      {type}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
 
-            <Text style={styles.modalSectionTitle}>Categorías</Text>
+            <Text style={[styles.modalSectionTitle, { color: theme.text }]}>
+              Categorías
+            </Text>
+
             <View style={styles.chipRowWrap}>
               <TouchableOpacity
                 style={[
                   styles.modalChip,
-                  selectedCategory === "Todas" && styles.modalChipActive,
+                  {
+                    backgroundColor:
+                      selectedCategory === "Todas"
+                        ? theme.primary
+                        : isDarkMode
+                        ? "#222A31"
+                        : "#F1F3F5",
+                  },
                 ]}
                 onPress={() => setSelectedCategory("Todas")}
               >
                 <Text
                   style={[
                     styles.modalChipText,
-                    selectedCategory === "Todas" && styles.modalChipTextActive,
+                    {
+                      color:
+                        selectedCategory === "Todas" ? "#FFFFFF" : theme.text,
+                    },
                   ]}
                 >
                   Todas
                 </Text>
               </TouchableOpacity>
 
-              {allCategories.slice(0, 8).map((category) => (
-                <TouchableOpacity
-                  key={category.id}
-                  style={[
-                    styles.modalChip,
-                    selectedCategory === category.name && styles.modalChipActive,
-                  ]}
-                  onPress={() => setSelectedCategory(category.name)}
-                >
-                  <Text
+              {allCategories.slice(0, 8).map((category) => {
+                const active = selectedCategory === category.name;
+
+                return (
+                  <TouchableOpacity
+                    key={category.id}
                     style={[
-                      styles.modalChipText,
-                      selectedCategory === category.name &&
-                        styles.modalChipTextActive,
+                      styles.modalChip,
+                      {
+                        backgroundColor: active
+                          ? theme.primary
+                          : isDarkMode
+                          ? "#222A31"
+                          : "#F1F3F5",
+                      },
                     ]}
+                    onPress={() => setSelectedCategory(category.name)}
                   >
-                    {category.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                    <Text
+                      style={[
+                        styles.modalChipText,
+                        {
+                          color: active ? "#FFFFFF" : theme.text,
+                        },
+                      ]}
+                    >
+                      {category.name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
 
-            <Text style={styles.modalSectionTitle}>Ordenar por</Text>
+            <Text style={[styles.modalSectionTitle, { color: theme.text }]}>
+              Ordenar por
+            </Text>
+
             <View style={styles.chipRowWrap}>
-              {sortOptions.map((option) => (
-                <TouchableOpacity
-                  key={option}
-                  style={[
-                    styles.modalChip,
-                    sortBy === option && styles.modalChipActive,
-                  ]}
-                  onPress={() => setSortBy(option)}
-                >
-                  <Text
+              {sortOptions.map((option) => {
+                const active = sortBy === option;
+
+                return (
+                  <TouchableOpacity
+                    key={option}
                     style={[
-                      styles.modalChipText,
-                      sortBy === option && styles.modalChipTextActive,
+                      styles.modalChip,
+                      {
+                        backgroundColor: active
+                          ? theme.primary
+                          : isDarkMode
+                          ? "#222A31"
+                          : "#F1F3F5",
+                      },
                     ]}
+                    onPress={() => setSortBy(option)}
                   >
-                    {option}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                    <Text
+                      style={[
+                        styles.modalChipText,
+                        {
+                          color: active ? "#FFFFFF" : theme.text,
+                        },
+                      ]}
+                    >
+                      {option}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
 
             <ButtonPrimary
               title="Aplicar filtros"
               onPress={() => setShowAdvancedModal(false)}
-              style={styles.applyButton}
+              style={[styles.applyButton, { backgroundColor: theme.primary }]}
             />
 
             <TouchableOpacity
               style={styles.clearButton}
               onPress={clearAdvancedFilters}
             >
-              <Text style={styles.clearButtonText}>Limpiar filtros</Text>
+              <Text style={[styles.clearButtonText, { color: theme.primary }]}>
+                Limpiar filtros
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -373,37 +516,69 @@ export default function HistoryScreen() {
         onRequestClose={() => setShowAmountModal(false)}
       >
         <View style={styles.modalOverlayCenter}>
-          <View style={styles.amountModal}>
+          <View style={[styles.amountModal, { backgroundColor: theme.card }]}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Rango de monto</Text>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>
+                Rango de monto
+              </Text>
 
               <TouchableOpacity onPress={() => setShowAmountModal(false)}>
-                <Ionicons name="close" size={24} color={colors.text} />
+                <Ionicons name="close" size={24} color={theme.text} />
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.modalSubtitle}>
+            <Text style={[styles.modalSubtitle, { color: theme.textMuted }]}>
               Filtra movimientos por monto mínimo y máximo.
             </Text>
 
-            <Text style={styles.modalSectionTitle}>Monto mínimo</Text>
-            <View style={styles.amountInputBox}>
-              <Text style={styles.currencyLabel}>S/</Text>
+            <Text style={[styles.modalSectionTitle, { color: theme.text }]}>
+              Monto mínimo
+            </Text>
+
+            <View
+              style={[
+                styles.amountInputBox,
+                {
+                  borderColor: theme.border,
+                  backgroundColor: isDarkMode ? "#222A31" : "#FFFFFF",
+                },
+              ]}
+            >
+              <Text style={[styles.currencyLabel, { color: theme.textMuted }]}>
+                S/
+              </Text>
+
               <TextInput
-                style={styles.amountInput}
+                style={[styles.amountInput, { color: theme.text }]}
                 placeholder="0.00"
+                placeholderTextColor={theme.textMuted}
                 keyboardType="numeric"
                 value={minAmount}
                 onChangeText={setMinAmount}
               />
             </View>
 
-            <Text style={styles.modalSectionTitle}>Monto máximo</Text>
-            <View style={styles.amountInputBox}>
-              <Text style={styles.currencyLabel}>S/</Text>
+            <Text style={[styles.modalSectionTitle, { color: theme.text }]}>
+              Monto máximo
+            </Text>
+
+            <View
+              style={[
+                styles.amountInputBox,
+                {
+                  borderColor: theme.border,
+                  backgroundColor: isDarkMode ? "#222A31" : "#FFFFFF",
+                },
+              ]}
+            >
+              <Text style={[styles.currencyLabel, { color: theme.textMuted }]}>
+                S/
+              </Text>
+
               <TextInput
-                style={styles.amountInput}
+                style={[styles.amountInput, { color: theme.text }]}
                 placeholder="1000.00"
+                placeholderTextColor={theme.textMuted}
                 keyboardType="numeric"
                 value={maxAmount}
                 onChangeText={setMaxAmount}
@@ -413,14 +588,16 @@ export default function HistoryScreen() {
             <ButtonPrimary
               title="Aplicar rango"
               onPress={() => setShowAmountModal(false)}
-              style={styles.applyButton}
+              style={[styles.applyButton, { backgroundColor: theme.primary }]}
             />
 
             <TouchableOpacity
               style={styles.clearButton}
               onPress={clearAmountFilters}
             >
-              <Text style={styles.clearButtonText}>Limpiar rango</Text>
+              <Text style={[styles.clearButtonText, { color: theme.primary }]}>
+                Limpiar rango
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -432,28 +609,31 @@ export default function HistoryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.backgroundSoft,
   },
   content: {
     paddingHorizontal: 20,
     paddingTop: 52,
   },
   header: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 28,
-  },
-  headerTitle: {
-    marginLeft: 12,
-    flex: 1,
-    fontSize: 16,
-    fontWeight: "900",
-    color: colors.primary,
-  },
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "space-between",
+  marginBottom: 28,
+},
+headerSide: {
+  width: 32,
+  alignItems: "center",
+  justifyContent: "center",
+},
+headerTitle: {
+  flex: 1,
+  textAlign: "center",
+  fontSize: 20,
+  fontWeight: "900",
+},
   searchBox: {
     height: 46,
     borderRadius: 23,
-    backgroundColor: "#FFFFFF",
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 14,
@@ -468,24 +648,20 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 8,
     fontSize: 14,
-    color: colors.text,
   },
   activeFiltersBox: {
     position: "relative",
-    backgroundColor: colors.primaryLight,
     borderRadius: 14,
     padding: 12,
     paddingRight: 38,
     marginBottom: 14,
   },
   activeFiltersTitle: {
-    color: colors.primary,
     fontSize: 12,
     fontWeight: "900",
     marginBottom: 4,
   },
   activeFiltersText: {
-    color: colors.primary,
     fontSize: 12,
     fontWeight: "700",
     lineHeight: 17,
@@ -497,7 +673,6 @@ const styles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
     zIndex: 10,
@@ -515,19 +690,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
     paddingVertical: 9,
     borderRadius: 22,
-    backgroundColor: "#E5E5E5",
     marginRight: 12,
   },
-  filterChipActive: {
-    backgroundColor: colors.primary,
-  },
   filterText: {
-    color: colors.text,
     fontSize: 13,
-    fontWeight: "700",
-  },
-  filterTextActive: {
-    color: "#FFFFFF",
+    fontWeight: "800",
   },
   group: {
     marginBottom: 8,
@@ -535,9 +702,43 @@ const styles = StyleSheet.create({
   dateTitle: {
     marginBottom: 12,
     fontSize: 13,
-    fontWeight: "700",
+    fontWeight: "800",
     letterSpacing: 1,
-    color: "#4B5563",
+  },
+  transactionRow: {
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  transactionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  transactionInfo: {
+    flex: 1,
+  },
+  transactionTitle: {
+    fontSize: 15,
+    fontWeight: "900",
+  },
+  transactionTime: {
+    marginTop: 3,
+    fontSize: 12,
+  },
+  transactionAmount: {
+    fontSize: 14,
+    fontWeight: "900",
   },
   emptyBox: {
     marginTop: 40,
@@ -546,7 +747,6 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     marginTop: 10,
-    color: colors.textMuted,
     fontSize: 14,
     fontWeight: "600",
   },
@@ -562,7 +762,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
   },
   modalContent: {
-    backgroundColor: "#FFFFFF",
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingHorizontal: 20,
@@ -570,7 +769,6 @@ const styles = StyleSheet.create({
     paddingBottom: 34,
   },
   amountModal: {
-    backgroundColor: "#FFFFFF",
     borderRadius: 24,
     paddingHorizontal: 20,
     paddingTop: 20,
@@ -584,19 +782,16 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: "900",
-    color: colors.text,
   },
   modalSubtitle: {
     marginTop: 6,
     marginBottom: 18,
-    color: colors.textMuted,
     fontSize: 13,
     lineHeight: 18,
   },
   modalSectionTitle: {
     fontSize: 13,
     fontWeight: "900",
-    color: colors.text,
     marginBottom: 10,
     marginTop: 8,
   },
@@ -613,25 +808,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 9,
     borderRadius: 18,
-    backgroundColor: "#F1F3F5",
     marginRight: 8,
     marginBottom: 8,
   },
-  modalChipActive: {
-    backgroundColor: colors.primary,
-  },
   modalChipText: {
-    color: colors.text,
     fontSize: 12,
     fontWeight: "800",
-  },
-  modalChipTextActive: {
-    color: "#FFFFFF",
   },
   amountInputBox: {
     height: 46,
     borderWidth: 1,
-    borderColor: colors.border,
     borderRadius: 14,
     flexDirection: "row",
     alignItems: "center",
@@ -640,14 +826,12 @@ const styles = StyleSheet.create({
   },
   currencyLabel: {
     fontSize: 15,
-    color: colors.textMuted,
     fontWeight: "800",
     marginRight: 8,
   },
   amountInput: {
     flex: 1,
     fontSize: 15,
-    color: colors.text,
   },
   applyButton: {
     marginTop: 14,
@@ -657,7 +841,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   clearButtonText: {
-    color: colors.primary,
     fontSize: 14,
     fontWeight: "900",
   },

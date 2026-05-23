@@ -1,13 +1,11 @@
-import { View, StyleSheet } from "react-native";
+import { View, StyleSheet, TouchableOpacity } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 
-import colors from "../theme/colors";
 import { useAppTheme } from "../theme/ThemeContext";
 
 import HomeScreen from "../screens/HomeScreen";
 import HistoryScreen from "../screens/HistoryScreen";
-import AddTransactionScreen from "../screens/AddTransactionScreen";
 import StatisticsScreen from "../screens/StatisticsScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 
@@ -32,12 +30,16 @@ const icons = {
   },
 };
 
+function EmptyScreen() {
+  return null;
+}
+
 export default function MainTabs() {
   const { theme } = useAppTheme();
 
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
+      screenOptions={({ route, navigation }) => ({
         headerShown: false,
         tabBarActiveTintColor: theme.primary,
         tabBarInactiveTintColor: theme.textMuted,
@@ -47,20 +49,23 @@ export default function MainTabs() {
             backgroundColor: theme.tabBar,
           },
         ],
+        tabBarLabel: route.name === "Agregar" ? "" : undefined,
         tabBarLabelStyle: styles.tabLabel,
         tabBarIcon: ({ focused, color, size }) => {
           if (route.name === "Agregar") {
             return (
-              <View
+              <TouchableOpacity
+                activeOpacity={0.85}
                 style={[
                   styles.addButton,
                   {
                     backgroundColor: theme.primary,
                   },
                 ]}
+                onPress={() => navigation.getParent()?.navigate("AddTransaction")}
               >
                 <Ionicons name="add" size={34} color="#FFFFFF" />
-              </View>
+              </TouchableOpacity>
             );
           }
 
@@ -72,9 +77,22 @@ export default function MainTabs() {
       })}
     >
       <Tab.Screen name="Inicio" component={HomeScreen} />
+
       <Tab.Screen name="Historial" component={HistoryScreen} />
-      <Tab.Screen name="Agregar" component={AddTransactionScreen} />
+
+      <Tab.Screen
+        name="Agregar"
+        component={EmptyScreen}
+        listeners={({ navigation }) => ({
+          tabPress: (event) => {
+            event.preventDefault();
+            navigation.getParent()?.navigate("AddTransaction");
+          },
+        })}
+      />
+
       <Tab.Screen name="Estadísticas" component={StatisticsScreen} />
+
       <Tab.Screen name="Perfil" component={ProfileScreen} />
     </Tab.Navigator>
   );
