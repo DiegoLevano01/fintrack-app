@@ -10,6 +10,7 @@ import {
   Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Sentry from "@sentry/react-native";
 
 import colors from "../theme/colors";
@@ -17,11 +18,69 @@ import ButtonPrimary from "../components/ButtonPrimary";
 import { allCategories } from "../data/mockData";
 import { useAppTheme } from "../theme/ThemeContext";
 
-const quickCategories = allCategories.filter((category) =>
+const expenseQuickCategories = allCategories.filter((category) =>
   ["Comida", "Transporte", "Servicios", "Ocio"].includes(category.name)
 );
 
-const paymentMethods = ["Efectivo", "Tarjeta", "Yape", "Plin", "Transferencia"];
+const incomeCategories = [
+  {
+    id: "income-1",
+    name: "Sueldo",
+    icon: "cash-outline",
+    color: "#00924B",
+    bg: "#E8F7EF",
+  },
+  {
+    id: "income-2",
+    name: "Propina",
+    icon: "gift-outline",
+    color: "#2563EB",
+    bg: "#E7F0FF",
+  },
+  {
+    id: "income-3",
+    name: "Freelance",
+    icon: "laptop-outline",
+    color: "#7C3AED",
+    bg: "#F0E7FF",
+  },
+  {
+    id: "income-4",
+    name: "Venta",
+    icon: "storefront-outline",
+    color: "#F59E0B",
+    bg: "#FFF4CC",
+  },
+  {
+    id: "income-5",
+    name: "Reembolso",
+    icon: "return-up-back-outline",
+    color: "#0EA5E9",
+    bg: "#E0F2FE",
+  },
+  {
+    id: "income-6",
+    name: "Otros",
+    icon: "ellipsis-horizontal-outline",
+    color: "#6B7280",
+    bg: "#F1F3F5",
+  },
+];
+
+const paymentMethods = [
+  "Seleccionar método",
+  "Efectivo",
+  "Tarjeta",
+  "Yape",
+  "Plin",
+  "Transferencia",
+];
+
+const knownCompanies = {
+  "10218680319": "Restaurante La Esquina",
+  "20601234567": "Minimarket San José",
+  "20123456789": "Cafetería Central",
+};
 
 const dates = [
   "20 de mayo de 2026",
@@ -31,14 +90,91 @@ const dates = [
   "24 de mayo de 2026",
 ];
 
+function formatDateFromQR(dateText) {
+  if (!dateText) return "20 de mayo de 2026";
+
+  const [year, month, day] = dateText.split("-");
+
+  const months = {
+    "01": "enero",
+    "02": "febrero",
+    "03": "marzo",
+    "04": "abril",
+    "05": "mayo",
+    "06": "junio",
+    "07": "julio",
+    "08": "agosto",
+    "09": "septiembre",
+    "10": "octubre",
+    "11": "noviembre",
+    "12": "diciembre",
+  };
+
+  if (!year || !month || !day) return dateText;
+
+  return `${Number(day)} de ${months[month] || month} de ${year}`;
+}
+
+function parseReceiptQR(qrText) {
+  const cleanText = String(qrText || "").trim();
+  const parts = cleanText.split("|");
+
+  if (parts.length >= 7) {
+    const ruc = parts[0];
+    const tipoComprobante = parts[1];
+    const serie = parts[2];
+    const numero = parts[3];
+    const igv = parts[4];
+    const total = parts[5];
+    const fecha = parts[6];
+
+    const isValidRuc = /^\d{11}$/.test(ruc);
+    const isValidAmount = !Number.isNaN(Number(total));
+
+    if (isValidRuc && isValidAmount) {
+      const companyName = knownCompanies[ruc];
+
+      return {
+        valid: true,
+        amount: total,
+        date: formatDateFromQR(fecha),
+        description: companyName
+          ? `${companyName} - ${serie}-${numero}`
+          : `Comprobante ${serie}-${numero}`,
+        raw: cleanText,
+        data: {
+          ruc,
+          tipoComprobante,
+          serie,
+          numero,
+          igv,
+          total,
+          fecha,
+          companyName: companyName || null,
+        },
+      };
+    }
+  }
+
+  return {
+    valid: false,
+    raw: cleanText,
+  };
+}
+
 export default function AddTransactionScreen({ navigation }) {
   const { theme, isDarkMode } = useAppTheme();
+
+  const [permission, requestPermission] = useCameraPermissions();
+  const [showScanner, setShowScanner] = useState(false);
+  const [scanned, setScanned] = useState(false);
+  const [torchEnabled, setTorchEnabled] = useState(false);
 
   const [type, setType] = useState("Gasto");
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState(null);
   const [description, setDescription] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("Efectivo");
+  const [paymentMethod, setPaymentMethod] = useState("Seleccionar método");
   const [selectedDate, setSelectedDate] = useState("20 de mayo de 2026");
 
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -48,6 +184,88 @@ export default function AddTransactionScreen({ navigation }) {
   const [errors, setErrors] = useState({});
 
   const isIncome = type === "Ingreso";
+  const currentQuickCategories = isIncome
+    ? incomeCategories.slice(0, 4)
+    : expenseQuickCategories;
+  const currentAllCategories = isIncome ? incomeCategories : allCategories;
+
+  const inputBackground = isDarkMode ? "#222A31" : "#FFFFFF";
+  const softBackground = isDarkMode ? "#151A20" : "#F1F5F3";
+
+  const handleChangeType = (newType) => {
+    setType(newType);
+    setCategory(null);
+    setErrors({});
+
+    if (newType === "Ingreso") {
+      setPaymentMethod("Seleccionar método");
+    }
+  };
+
+  const openScanner = async () => {
+    if (!permission?.granted) {
+      const response = await requestPermission();
+
+      if (!response.granted) {
+        Alert.alert(
+          "Permiso requerido",
+          "Necesitamos acceso a la cámara para escanear el QR de la boleta."
+        );
+        return;
+      }
+    }
+
+    setScanned(false);
+    setTorchEnabled(false);
+    setShowScanner(true);
+  };
+
+  const closeScanner = () => {
+    setTorchEnabled(false);
+    setShowScanner(false);
+  };
+
+  const handleQRCodeScanned = ({ data }) => {
+    if (scanned) return;
+
+    setScanned(true);
+
+    const result = parseReceiptQR(data);
+
+    if (result.valid) {
+      setType("Gasto");
+      setAmount(result.amount);
+      setSelectedDate(result.date);
+      setDescription(result.description);
+      setPaymentMethod("Seleccionar método");
+
+      const defaultCategory = allCategories.find(
+        (item) => item.name === "Otros"
+      );
+
+      if (defaultCategory) {
+        setCategory(defaultCategory);
+      }
+
+      setTorchEnabled(false);
+      setShowScanner(false);
+
+      Sentry.captureMessage("QR de comprobante escaneado correctamente");
+      return;
+    }
+
+    setTorchEnabled(false);
+    setShowScanner(false);
+
+    Sentry.captureMessage("QR escaneado sin formato de comprobante compatible");
+
+    setTimeout(() => {
+      Alert.alert(
+        "QR no compatible",
+        "El QR fue leído, pero no contiene datos claros de una boleta electrónica. Puedes registrar el movimiento manualmente."
+      );
+    }, 300);
+  };
 
   const handleSave = () => {
     const newErrors = {};
@@ -60,6 +278,10 @@ export default function AddTransactionScreen({ navigation }) {
       newErrors.category = "Selecciona una categoría.";
     }
 
+    if (!isIncome && paymentMethod === "Seleccionar método") {
+      newErrors.paymentMethod = "Selecciona un método de pago.";
+    }
+
     setErrors(newErrors);
 
     if (Object.keys(newErrors).length > 0) {
@@ -68,12 +290,14 @@ export default function AddTransactionScreen({ navigation }) {
     }
 
     Sentry.captureMessage(`Movimiento agregado: ${type} - ${category.name}`);
+
     Sentry.logger.info("Movimiento guardado desde pantalla Agregar", {
       type,
       amount,
       category: category.name,
-      paymentMethod,
+      paymentMethod: isIncome ? "No aplica" : paymentMethod,
       selectedDate,
+      description,
     });
 
     Alert.alert(
@@ -88,9 +312,6 @@ export default function AddTransactionScreen({ navigation }) {
     );
   };
 
-  const inputBackground = isDarkMode ? "#222A31" : "#FFFFFF";
-  const softBackground = isDarkMode ? "#151A20" : "#F1F5F3";
-
   return (
     <>
       <ScrollView
@@ -99,10 +320,7 @@ export default function AddTransactionScreen({ navigation }) {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
+          <TouchableOpacity style={styles.backButton} onPress={navigation.goBack}>
             <Ionicons name="chevron-back" size={24} color={theme.primary} />
           </TouchableOpacity>
 
@@ -119,7 +337,7 @@ export default function AddTransactionScreen({ navigation }) {
               styles.typeButton,
               type === "Gasto" && styles.expenseButtonActive,
             ]}
-            onPress={() => setType("Gasto")}
+            onPress={() => handleChangeType("Gasto")}
           >
             <Ionicons
               name="arrow-up-outline"
@@ -150,7 +368,7 @@ export default function AddTransactionScreen({ navigation }) {
                 elevation: 4,
               },
             ]}
-            onPress={() => setType("Ingreso")}
+            onPress={() => handleChangeType("Ingreso")}
           >
             <Ionicons
               name="arrow-down-outline"
@@ -228,11 +446,11 @@ export default function AddTransactionScreen({ navigation }) {
         )}
 
         <Text style={[styles.sectionTitle, { color: theme.text }]}>
-          Categorías rápidas
+          {isIncome ? "Categorías de ingreso" : "Categorías rápidas"}
         </Text>
 
         <View style={styles.quickCategories}>
-          {quickCategories.map((item) => {
+          {currentQuickCategories.map((item) => {
             const selected = category?.name === item.name;
 
             return (
@@ -298,37 +516,67 @@ export default function AddTransactionScreen({ navigation }) {
 
             <TextInput
               style={[styles.descriptionInput, { color: theme.text }]}
-              placeholder="Ej. Almuerzo con amigos"
+              placeholder={
+                isIncome
+                  ? "Ej. Pago mensual, propina, venta..."
+                  : "Ej. Almuerzo con amigos"
+              }
               placeholderTextColor={theme.textMuted}
               value={description}
               onChangeText={setDescription}
             />
           </View>
 
-          <View style={[styles.divider, { backgroundColor: theme.border }]} />
+          {!isIncome && (
+            <>
+              <View
+                style={[styles.divider, { backgroundColor: theme.border }]}
+              />
 
-          <TouchableOpacity
-            style={styles.detailRow}
-            onPress={() => setShowPaymentModal(true)}
-          >
-            <Ionicons name="wallet-outline" size={21} color={theme.textMuted} />
+              <TouchableOpacity
+                style={styles.detailRow}
+                onPress={() => setShowPaymentModal(true)}
+              >
+                <Ionicons
+                  name="wallet-outline"
+                  size={21}
+                  color={theme.textMuted}
+                />
 
-            <View style={styles.paymentInfo}>
-              <Text style={[styles.paymentLabel, { color: theme.textMuted }]}>
-                MÉTODO DE PAGO
-              </Text>
+                <View style={styles.paymentInfo}>
+                  <Text
+                    style={[styles.paymentLabel, { color: theme.textMuted }]}
+                  >
+                    MÉTODO DE PAGO
+                  </Text>
 
-              <Text style={[styles.paymentValue, { color: theme.text }]}>
-                {paymentMethod}
-              </Text>
-            </View>
+                  <Text
+                    style={[
+                      styles.paymentValue,
+                      {
+                        color:
+                          paymentMethod === "Seleccionar método"
+                            ? theme.textMuted
+                            : theme.text,
+                      },
+                    ]}
+                  >
+                    {paymentMethod}
+                  </Text>
+                </View>
 
-            <Ionicons
-              name="chevron-forward"
-              size={20}
-              color={theme.textMuted}
-            />
-          </TouchableOpacity>
+                <Ionicons
+                  name="chevron-forward"
+                  size={20}
+                  color={theme.textMuted}
+                />
+              </TouchableOpacity>
+
+              {!!errors.paymentMethod && (
+                <Text style={styles.paymentError}>{errors.paymentMethod}</Text>
+              )}
+            </>
+          )}
         </View>
 
         <ButtonPrimary
@@ -341,6 +589,25 @@ export default function AddTransactionScreen({ navigation }) {
             },
           ]}
         />
+
+        {!isIncome && (
+          <TouchableOpacity
+            style={[
+              styles.scanButton,
+              {
+                backgroundColor: isDarkMode ? "#222A31" : "#E8F7EF",
+                borderColor: theme.primary,
+              },
+            ]}
+            onPress={openScanner}
+          >
+            <Ionicons name="qr-code-outline" size={20} color={theme.primary} />
+
+            <Text style={[styles.scanButtonText, { color: theme.primary }]}>
+              Escanear QR de boleta
+            </Text>
+          </TouchableOpacity>
+        )}
 
         <View style={{ height: 115 }} />
       </ScrollView>
@@ -355,7 +622,9 @@ export default function AddTransactionScreen({ navigation }) {
           <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: theme.text }]}>
-                Selecciona una categoría
+                {isIncome
+                  ? "Selecciona categoría de ingreso"
+                  : "Selecciona una categoría"}
               </Text>
 
               <TouchableOpacity onPress={() => setShowCategoryModal(false)}>
@@ -364,7 +633,7 @@ export default function AddTransactionScreen({ navigation }) {
             </View>
 
             <View style={styles.modalGrid}>
-              {allCategories.map((item) => (
+              {currentAllCategories.map((item) => (
                 <TouchableOpacity
                   key={item.id}
                   style={styles.modalCategory}
@@ -523,6 +792,71 @@ export default function AddTransactionScreen({ navigation }) {
           </View>
         </View>
       </Modal>
+
+      <Modal
+        visible={showScanner}
+        animationType="slide"
+        onRequestClose={closeScanner}
+      >
+        <View style={styles.scannerContainer}>
+          <CameraView
+            style={StyleSheet.absoluteFillObject}
+            facing="back"
+            enableTorch={torchEnabled}
+            onBarcodeScanned={scanned ? undefined : handleQRCodeScanned}
+            barcodeScannerSettings={{
+              barcodeTypes: ["qr"],
+            }}
+          />
+
+          <View style={styles.scannerOverlay}>
+            <View style={styles.scannerHeader}>
+              <TouchableOpacity
+                style={styles.scannerCloseButton}
+                onPress={closeScanner}
+              >
+                <Ionicons name="close" size={26} color="#FFFFFF" />
+              </TouchableOpacity>
+
+              <Text style={styles.scannerTitle}>Escanear boleta</Text>
+
+              <View style={{ width: 42 }} />
+            </View>
+
+            <View style={styles.scannerCenter}>
+              <View style={styles.scanFrame}>
+                <View style={styles.scanCornerTopLeft} />
+                <View style={styles.scanCornerTopRight} />
+                <View style={styles.scanCornerBottomLeft} />
+                <View style={styles.scanCornerBottomRight} />
+              </View>
+
+              <TouchableOpacity
+                style={[
+                  styles.flashBelowFrameButton,
+                  torchEnabled && styles.flashBelowFrameButtonActive,
+                ]}
+                onPress={() => setTorchEnabled((current) => !current)}
+              >
+                <Ionicons
+                  name={torchEnabled ? "flash" : "flash-outline"}
+                  size={20}
+                  color="#FFFFFF"
+                />
+
+                <Text style={styles.flashBelowFrameText}>
+                  {torchEnabled ? "Linterna encendida" : "Encender linterna"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.scannerHelp}>
+              Apunta la cámara al QR del comprobante. Si contiene monto y fecha,
+              se completará el formulario automáticamente.
+            </Text>
+          </View>
+        </View>
+      </Modal>
     </>
   );
 }
@@ -617,6 +951,13 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginBottom: 8,
   },
+  paymentError: {
+    color: colors.danger,
+    fontSize: 11,
+    fontWeight: "700",
+    marginBottom: 10,
+    marginLeft: 46,
+  },
   sectionTitle: {
     fontSize: 14,
     fontWeight: "900",
@@ -701,6 +1042,20 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
+  scanButton: {
+    height: 52,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  scanButtonText: {
+    fontSize: 14,
+    fontWeight: "900",
+    marginLeft: 8,
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.35)",
@@ -770,5 +1125,115 @@ const styles = StyleSheet.create({
   paymentOptionText: {
     fontSize: 14,
     fontWeight: "800",
+  },
+  scannerContainer: {
+    flex: 1,
+    backgroundColor: "#000",
+  },
+  scannerOverlay: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: 55,
+    justifyContent: "space-between",
+    backgroundColor: "rgba(0,0,0,0.18)",
+  },
+  scannerHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  scannerCloseButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  scannerTitle: {
+    color: "#FFFFFF",
+    fontSize: 20,
+    fontWeight: "900",
+  },
+  scannerCenter: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  scanFrame: {
+    alignSelf: "center",
+    width: 250,
+    height: 250,
+    position: "relative",
+  },
+  scanCornerTopLeft: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: 50,
+    height: 50,
+    borderTopWidth: 5,
+    borderLeftWidth: 5,
+    borderColor: "#FFFFFF",
+    borderTopLeftRadius: 16,
+  },
+  scanCornerTopRight: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    width: 50,
+    height: 50,
+    borderTopWidth: 5,
+    borderRightWidth: 5,
+    borderColor: "#FFFFFF",
+    borderTopRightRadius: 16,
+  },
+  scanCornerBottomLeft: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    width: 50,
+    height: 50,
+    borderBottomWidth: 5,
+    borderLeftWidth: 5,
+    borderColor: "#FFFFFF",
+    borderBottomLeftRadius: 16,
+  },
+  scanCornerBottomRight: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    width: 50,
+    height: 50,
+    borderBottomWidth: 5,
+    borderRightWidth: 5,
+    borderColor: "#FFFFFF",
+    borderBottomRightRadius: 16,
+  },
+  flashBelowFrameButton: {
+    height: 48,
+    borderRadius: 24,
+    marginTop: 24,
+    paddingHorizontal: 20,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  flashBelowFrameButtonActive: {
+    backgroundColor: "rgba(34,197,94,0.85)",
+  },
+  flashBelowFrameText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "900",
+    marginLeft: 8,
+  },
+  scannerHelp: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "700",
+    lineHeight: 20,
+    textAlign: "center",
+    marginBottom: 45,
   },
 });

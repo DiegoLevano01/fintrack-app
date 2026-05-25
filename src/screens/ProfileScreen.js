@@ -119,7 +119,7 @@ export default function ProfileScreen({ navigation }) {
         <Text style={[styles.name, { color: theme.text }]}>Diego Levano</Text>
 
         <Text style={[styles.email, { color: theme.textMuted }]}>
-          diego.levano@gmail.com
+          201912025@urp.edu.pe
         </Text>
 
         <View style={[styles.userBadge, { backgroundColor: theme.primaryLight }]}>

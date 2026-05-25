@@ -37,11 +37,15 @@ const groupedTransactions = [
   },
 ];
 
-function TransactionRow({ item, theme, isDarkMode }) {
+function TransactionRow({ item, theme, isDarkMode, onPress }) {
   const isIncome = item.amount > 0;
 
   return (
-    <View style={[styles.transactionRow, { backgroundColor: theme.card }]}>
+    <TouchableOpacity
+      style={[styles.transactionRow, { backgroundColor: theme.card }]}
+      onPress={onPress}
+      activeOpacity={0.85}
+    >
       <View
         style={[
           styles.transactionIcon,
@@ -63,22 +67,31 @@ function TransactionRow({ item, theme, isDarkMode }) {
         </Text>
       </View>
 
-      <Text
-        style={[
-          styles.transactionAmount,
-          {
-            color: isIncome ? theme.primary : colors.expense,
-          },
-        ]}
-      >
-        {isIncome ? "+ " : "- "}
-        {formatCurrency(Math.abs(item.amount))}
-      </Text>
-    </View>
+      <View style={styles.transactionRight}>
+        <Text
+          style={[
+            styles.transactionAmount,
+            {
+              color: isIncome ? theme.primary : colors.expense,
+            },
+          ]}
+        >
+          {isIncome ? "+ " : "- "}
+          {formatCurrency(Math.abs(item.amount))}
+        </Text>
+
+        <Ionicons
+          name="chevron-forward"
+          size={16}
+          color={theme.textMuted}
+          style={styles.transactionChevron}
+        />
+      </View>
+    </TouchableOpacity>
   );
 }
 
-export default function HistoryScreen() {
+export default function HistoryScreen({ navigation }) {
   const { theme, isDarkMode } = useAppTheme();
 
   const [selectedFilter, setSelectedFilter] = useState("Hoy");
@@ -104,6 +117,20 @@ export default function HistoryScreen() {
     sortBy !== "Recientes" ||
     minAmount ||
     maxAmount;
+
+  const openTransactionDetail = (item) => {
+    navigation.navigate("TransactionDetail", {
+      transaction: {
+        ...item,
+        description:
+          item.description ||
+          `Movimiento registrado desde el historial de FinTrack.`,
+        paymentMethod: item.paymentMethod || "No especificado",
+        reference: item.reference || "Sin comprobante asociado",
+        date: item.date || "20 de mayo de 2026",
+      },
+    });
+  };
 
   const getVisibleGroups = () => {
     let groups = groupedTransactions;
@@ -194,20 +221,20 @@ export default function HistoryScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-       <View style={styles.header}>
-  <TouchableOpacity
-    style={styles.headerSide}
-    onPress={() => setShowAdvancedModal(true)}
-  >
-    <Ionicons name="menu" size={23} color={theme.primary} />
-  </TouchableOpacity>
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.headerSide}
+            onPress={() => setShowAdvancedModal(true)}
+          >
+            <Ionicons name="menu" size={23} color={theme.primary} />
+          </TouchableOpacity>
 
-  <Text style={[styles.headerTitle, { color: theme.primary }]}>
-    Historial
-  </Text>
+          <Text style={[styles.headerTitle, { color: theme.primary }]}>
+            Historial
+          </Text>
 
-  <View style={styles.headerSide} />
-</View>
+          <View style={styles.headerSide} />
+        </View>
 
         <View style={[styles.searchBox, { backgroundColor: theme.card }]}>
           <Ionicons name="search-outline" size={18} color={theme.textMuted} />
@@ -307,6 +334,7 @@ export default function HistoryScreen() {
                   item={item}
                   theme={theme}
                   isDarkMode={isDarkMode}
+                  onPress={() => openTransactionDetail(item)}
                 />
               ))}
             </View>
@@ -615,22 +643,22 @@ const styles = StyleSheet.create({
     paddingTop: 52,
   },
   header: {
-  flexDirection: "row",
-  alignItems: "center",
-  justifyContent: "space-between",
-  marginBottom: 28,
-},
-headerSide: {
-  width: 32,
-  alignItems: "center",
-  justifyContent: "center",
-},
-headerTitle: {
-  flex: 1,
-  textAlign: "center",
-  fontSize: 20,
-  fontWeight: "900",
-},
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 28,
+  },
+  headerSide: {
+    width: 32,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerTitle: {
+    flex: 1,
+    textAlign: "center",
+    fontSize: 20,
+    fontWeight: "900",
+  },
   searchBox: {
     height: 46,
     borderRadius: 23,
@@ -739,6 +767,13 @@ headerTitle: {
   transactionAmount: {
     fontSize: 14,
     fontWeight: "900",
+  },
+  transactionRight: {
+    alignItems: "flex-end",
+    justifyContent: "center",
+  },
+  transactionChevron: {
+    marginTop: 4,
   },
   emptyBox: {
     marginTop: 40,

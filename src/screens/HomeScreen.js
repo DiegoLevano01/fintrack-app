@@ -49,11 +49,15 @@ function SummaryBox({ icon, label, amount, color, subtitle, theme, isDarkMode })
   );
 }
 
-function TransactionRow({ item, theme, isDarkMode }) {
+function TransactionRow({ item, theme, isDarkMode, onPress }) {
   const isIncome = item.amount > 0;
 
   return (
-    <View style={[styles.transactionRow, { backgroundColor: theme.card }]}>
+    <TouchableOpacity
+      style={[styles.transactionRow, { backgroundColor: theme.card }]}
+      onPress={onPress}
+      activeOpacity={0.85}
+    >
       <View
         style={[
           styles.transactionIcon,
@@ -75,18 +79,27 @@ function TransactionRow({ item, theme, isDarkMode }) {
         </Text>
       </View>
 
-      <Text
-        style={[
-          styles.transactionAmount,
-          {
-            color: isIncome ? theme.primary : colors.expense,
-          },
-        ]}
-      >
-        {isIncome ? "+ " : "- "}
-        {formatCurrency(Math.abs(item.amount))}
-      </Text>
-    </View>
+      <View style={styles.transactionRight}>
+        <Text
+          style={[
+            styles.transactionAmount,
+            {
+              color: isIncome ? theme.primary : colors.expense,
+            },
+          ]}
+        >
+          {isIncome ? "+ " : "- "}
+          {formatCurrency(Math.abs(item.amount))}
+        </Text>
+
+        <Ionicons
+          name="chevron-forward"
+          size={16}
+          color={theme.textMuted}
+          style={styles.transactionChevron}
+        />
+      </View>
+    </TouchableOpacity>
   );
 }
 
@@ -136,6 +149,20 @@ export default function HomeScreen({ navigation }) {
   const handleModalCategoryPress = (category) => {
     setSelectedCategory(category.name);
     setShowCategoriesModal(false);
+  };
+
+  const openTransactionDetail = (item) => {
+    navigation.navigate("TransactionDetail", {
+      transaction: {
+        ...item,
+        description:
+          item.description ||
+          `Movimiento registrado desde el dashboard de FinTrack.`,
+        paymentMethod: item.paymentMethod || "No especificado",
+        reference: item.reference || "Sin comprobante asociado",
+        date: item.date || "20 de mayo de 2026",
+      },
+    });
   };
 
   return (
@@ -316,6 +343,7 @@ export default function HomeScreen({ navigation }) {
               item={item}
               theme={theme}
               isDarkMode={isDarkMode}
+              onPress={() => openTransactionDetail(item)}
             />
           ))
         ) : (
@@ -642,6 +670,13 @@ const styles = StyleSheet.create({
   transactionAmount: {
     fontSize: 14,
     fontWeight: "900",
+  },
+  transactionRight: {
+    alignItems: "flex-end",
+    justifyContent: "center",
+  },
+  transactionChevron: {
+    marginTop: 4,
   },
   categories: {
     marginTop: 2,
